@@ -65,7 +65,7 @@ local function loadWorldState()
 
 	Logging.Debug(state)
 
-	if state then
+	if state and typeof(state) == "table" then
 		session.State = state
 	else
 		session.State = {
@@ -117,6 +117,13 @@ local function startRouteRefreshLoop()
 	end)
 end
 
+local function snapshotState()
+	return {
+		Version = session.State.Version or 1,
+		PlacedObjects = table.clone(session.State.PlacedObjects or {}),
+	}
+end
+
 local function startAutosaveLoop()
 	if session.Autosaving then
 		return
@@ -132,7 +139,8 @@ local function startAutosaveLoop()
 			end
 
 			if session.Dirty then
-				local ok = session.Save(true)
+				local ok = WorldSession.Save(true)
+				Logging.Debug("WORLD SAVED:", session.WorldName)
 				if ok then
 					session.Dirty = false
 				end
@@ -230,81 +238,103 @@ function WorldSession.Save(force)
 	end
 
 	if not force and not session.Dirty then
+		Logging.Debug("WORLD NOT DIRTY:", session.WorldName)
 		return true
 	end
 
-	local ok, result = WorldData.SaveWorldState(session.WorldName, session.State)
+	local ok, err = WorldData.SaveWorldState(session.WorldName, snapshotState(), {
+		Name = session.WorldName,
+		OwnerUserId = session.OwnerUserId,
+		WorldCode = session.WorldCode,
+	})
+
+	Logging.Debug("WORLD SAVED:", session.WorldName, err, ok)
+
 	if ok then
 		session.Dirty = false
+	else
+		Logging.Warn("WORLD SAVED FAILED:", err)
 	end
 
-	return ok, result
+	return ok, err
 end
 
 function WorldSession.PlaceObject(player, placementData)
 	Logging.Debug("Place object:", player, placementData)
+	Logging.Debug("PLACEMENT STATE SIZE:", #session.State.PlacedObjects)
 
 	if not session.Started then
-		return false, "World session is not started."
+		Logging.Debug("World session not started, session:", session)
+
+		return false, "World session not started."
 	end
 
 	if typeof(placementData) ~= "table" then
+		Logging.Debug("Invalid placement data:", placementData)
+
 		return false, "Invalid placement data."
 	end
 
 	local templateName = placementData.Template
+	local position = placementData.Position
+
 	if typeof(templateName) ~= "string" then
+		Logging.Debug("Missing template name:", templateName)
+
 		return false, "Missing template name."
 	end
 
+	if typeof(position) ~= "Vector3" then
+		Logging.Debug("Missing or invalid position:", position)
+
+		return false, "Missing or invalid position."
+	end
+
 	local template = PlacementService.GetTemplate(templateName, getTemplateFolder())
+
 	if not template then
+		Logging.Debug("Unknown template:", templateName)
+
 		return false, "Unknown template: " .. templateName
 	end
 
-	local pivot = placementData.Pivot
-		or placementData.CFrame
-		or placementData.Position
-
-	if typeof(pivot) ~= "CFrame" and typeof(pivot) ~= "table" then
-		return false, "Missing placement transform."
-	end
-
-	local cf
-	if typeof(pivot) == "CFrame" then
-		cf = pivot
-	elseif typeof(pivot) == "table" then
-		if #pivot == 12 then
-			cf = CFrame.new(table.unpack(pivot))
-		elseif #pivot == 3 then
-			cf = CFrame.new(pivot[1], pivot[2], pivot[3])
-		end
-	end
-
-	if not cf then
-		return false, "Invalid placement transform."
-	end
+	local cf = CFrame.new(
+		math.round(position.X),
+		math.round(position.Y),
+		math.round(position.Z)
+	)
 
 	local worldFolder = ensureWorldFolder()
-	local ignoreList = { worldFolder }
 
-	if player and player.Character then
+	local ignoreList = { worldFolder, workspace.Baseplate }
+
+	if player.Character then
 		table.insert(ignoreList, player.Character)
 	end
 
-	local okPlace, hit = PlacementService.CanPlace(cf, template:GetExtentsSize(), ignoreList)
+	local okPlace, hit = PlacementService.CanPlace(
+		cf,
+		template:GetExtentsSize(),
+		ignoreList
+	)
+
 	if not okPlace then
-		if hit ~= workspace.Baseplate then
-			return false, "Blocked by " .. hit:GetFullName()
-		end
+		Logging.Debug("Blocked by:", hit)
+
+		return false, "Blocked by " .. hit:GetFullName()
 	end
 
+	-- spawn
 	local clone = template:Clone()
 	clone:SetAttribute("Template", templateName)
 	clone.Parent = worldFolder
 	clone:PivotTo(cf)
 
-	local record = PlacementService.BuildRecord(templateName, cf, placementData.Extra)
+	-- SAVE RECORD (THIS IS THE IMPORTANT PART)
+	local record = PlacementService.BuildRecord(templateName, cf)
+
+	Logging.Debug("PLACEMENT RECORD:", record)
+
 	table.insert(session.State.PlacedObjects, record)
 	markDirty()
 
@@ -316,11 +346,15 @@ function WorldSession.Shutdown()
 
 	WorldSession.Save(true)
 
+	Logging.Debug("Saved on shutdown:", session.WorldName)
+	Logging.Debug(session)
+
 	if not isStudio() and session.WorldCode then
 		WorldRoutes.RemoveRoute(session.WorldCode)
 	end
 
 	session.Started = false
+
 	return true
 end
 
@@ -328,6 +362,7 @@ function WorldSession.StartStudioTest()
 	Logging.Debug("Starting studio test world session...")
 
 	if session.Started then
+		Logging.Warn("World session already started.")
 		return true
 	end
 
@@ -342,10 +377,33 @@ function WorldSession.StartStudioTest()
 	game:SetAttribute("OwnerUserId", 0)
 	game:SetAttribute("StudioMode", true)
 
-	session.State = {
-		Version = 1,
-		PlacedObjects = {},
-	}
+	local world = WorldData.GetWorld(session.WorldName)
+	if not world then
+		local ok, result = WorldData.SaveWorldState(session.WorldName, {
+			Version = 1,
+			PlacedObjects = {},
+		}, {
+			Name = session.WorldName,
+			OwnerUserId = 0,
+			CreatedAt = os.time(),
+			WorldCode = nil,
+		})
+
+		if not ok then
+			warn("[WorldSession] Failed to create studio world:", result)
+		end
+	end
+
+	local ok = loadWorldState()
+	Logging.Debug("LOAD WORLD STATE OK:", ok)
+
+	if not ok then
+		Logging.Debug("No datastore data found, using studio test seed.")
+		session.State = {
+			Version = 1,
+			PlacedObjects = {},
+		}
+	end
 
 	rebuildWorld()
 	startAutosaveLoop()

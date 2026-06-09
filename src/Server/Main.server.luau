@@ -13,7 +13,13 @@ local function onPlayerAdded(player)
 	PlayerData.LoadPlayer(player)
 end
 
+local shuttingDown = false
+
 local function onPlayerRemoving(player)
+	if shuttingDown then
+		return
+	end
+
 	PlayerData.SavePlayer(player)
 end
 
@@ -33,12 +39,10 @@ local function startWorldSession()
 		return
 	end
 
-	local players = Players:GetPlayers()
-	if #players == 0 then
-		return
-	end
+	-- wait for at least one player reliably
+	local player = Players.PlayerAdded:Wait()
 
-	local ok, err = WorldSession.StartFromPlayer(players[1])
+	local ok, err = WorldSession.StartFromPlayer(player)
 	if not ok then
 		warn("[Main] Live session failed:", err)
 	end
@@ -62,7 +66,8 @@ ClientPlacement.OnServerEvent:Connect(function(player, placementData)
 end)
 
 game:BindToClose(function()
+	shuttingDown = true
+
 	PlayerData.SaveAll()
 	WorldSession.Shutdown()
 end)
-

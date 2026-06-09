@@ -1,5 +1,7 @@
 local DataStoreService = game:GetService("DataStoreService")
 
+local Logging = require(game:GetService("ServerScriptService"):WaitForChild("Logging"))
+
 local WorldMetaStore = DataStoreService:GetDataStore("WorldMetadata")
 local WorldCodeStore = DataStoreService:GetDataStore("WorldCodeIndex")
 local OwnerStore = DataStoreService:GetDataStore("PlayerWorlds")
@@ -90,6 +92,8 @@ local function normalizeWorldMeta(userId, worldName, worldMeta)
 	worldMeta.WorldCode = worldMeta.WorldCode or nil
 	worldMeta.WorldData = worldMeta.WorldData or deepCopy(DEFAULT_WORLD_STATE)
 
+	Logging.Debug(worldMeta)
+
 	return worldMeta
 end
 
@@ -164,6 +168,8 @@ function WorldData.UpdateWorld(worldName, patch)
 				current[k] = v
 			end
 
+			Logging.Debug(current)
+
 			return current
 		end)
 	end)
@@ -185,13 +191,39 @@ function WorldData.GetWorldState(worldName)
 	return deepCopy(world.WorldData or DEFAULT_WORLD_STATE)
 end
 
-function WorldData.SaveWorldState(worldName, worldState)
+function WorldData.SaveWorldState(worldName, worldState, worldMeta)
 	worldState = deepCopy(worldState or DEFAULT_WORLD_STATE)
+	worldMeta = worldMeta or {}
 
-	return WorldData.UpdateWorld(worldName, function(current)
-		current.WorldData = worldState
-		return current
+	local ok, result = pcall(function()
+		return WorldMetaStore:UpdateAsync(worldNameKey(worldName), function(current)
+			if not current then
+				current = {
+					WorldName = worldName,
+					Name = worldMeta.Name or worldName,
+					OwnerUserId = worldMeta.OwnerUserId or 0,
+					CreatedAt = worldMeta.CreatedAt or os.time(),
+					WorldCode = worldMeta.WorldCode or nil,
+				}
+			end
+
+			current.WorldName = worldName
+			current.Name = current.Name or worldName
+			current.OwnerUserId = worldMeta.OwnerUserId or current.OwnerUserId or 0
+			current.CreatedAt = current.CreatedAt or os.time()
+			current.WorldCode = worldMeta.WorldCode or current.WorldCode or nil
+			current.WorldData = worldState
+
+			return current
+		end)
 	end)
+
+	if not ok then
+		warn("[WorldData] SaveWorldState failed:", worldName, result)
+		return false, result
+	end
+
+	return true, result
 end
 
 function WorldData.SetWorldCodeIndex(worldCode, worldName)

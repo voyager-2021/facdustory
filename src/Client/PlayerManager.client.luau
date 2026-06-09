@@ -3,6 +3,7 @@ local Player = game:GetService("Players").LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
 local PlayerGui = Player:WaitForChild("PlayerGui")
+local MainGui = PlayerGui:WaitForChild("MainGui")
 local Events = ReplicatedStorage:WaitForChild("Events")
 local Models = ReplicatedStorage:WaitForChild("Models")
 
@@ -12,35 +13,52 @@ repeat task.wait() until Player.Character
 
 local IsPlacing = false
 
-local function Placement(Model)
-	if IsPlacing then return end
-	
-	IsPlacing = true
-	
-	local mousePos = Vector3.new(math.round(mouse.Hit.Position.X), 2, math.round(mouse.Hit.Position.Z))
-	local Clone:Model = Model:Clone()
-	Clone.Parent = workspace:WaitForChild("Temporary")
-	Clone:move(mousePos)
-	
-	local Clone2 = script:WaitForChild("Placement"):Clone()
-	Clone2.Parent = Clone
-	
-	local CheckMark:Frame = PlayerGui:WaitForChild("MainGui").CheckMark
-	CheckMark.Visible = true
-	
-	CheckMark:WaitForChild("ImageButton").MouseButton1Click:Connect(function()
-		local PlacementData = {
-			Template = Model.name,
-			Pivot = CFrame.new(mousePos)
-		}
-		
-		Events:WaitForChild("ClientPlacement"):FireServer(PlacementData)
-		Clone:Destroy()
-		Clone2:Destroy()
-		CheckMark.Visible = false
-		
-		IsPlacing = false
-	end)
+local function Placement(model)
+    if IsPlacing then return end
+    IsPlacing = true
+
+    local ghost = model:Clone()
+    ghost.Parent = workspace:WaitForChild("Temporary")
+
+    local ui = script:WaitForChild("Placement"):Clone()
+    ui.Parent = ghost
+
+    local checkMark = PlayerGui:WaitForChild("MainGui").CheckMark
+    checkMark.Visible = true
+
+    -- Update ghost position every frame
+    local heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+        local mousePos = mouse.Hit.Position
+        ghost:PivotTo(CFrame.new(
+            math.round(mousePos.X),
+            2,
+            math.round(mousePos.Z)
+        ))
+    end)
+
+    local conn
+    conn = checkMark.ImageButton.MouseButton1Click:Connect(function()
+        conn:Disconnect()
+        heartbeat:Disconnect()  -- stop moving the ghost
+
+        local finalPos = mouse.Hit.Position  -- read fresh on confirm
+
+        local payload = {
+            Template = model.Name,
+            Position = Vector3.new(
+                math.round(finalPos.X),
+                2,
+                math.round(finalPos.Z)
+            )
+        }
+
+        Events.ClientPlacement:FireServer(payload)
+
+        ghost:Destroy()
+        ui:Destroy()
+        checkMark.Visible = false
+        IsPlacing = false
+    end)
 end
 
 UserInputService.InputBegan:Connect(function(input, gpe)
@@ -56,9 +74,6 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 	end
 end)
 
-UserInputService.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.KeyCode == Enum.KeyCode.E then
-		Placement(Models:WaitForChild("Test"))
-	end
+MainGui:WaitForChild("Build"):WaitForChild("ImageButton").MouseButton1Click:Connect(function()
+	
 end)

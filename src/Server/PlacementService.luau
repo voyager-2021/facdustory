@@ -21,11 +21,6 @@ local function deserializeCFrame(data)
 		return CFrame.new(table.unpack(data))
 	end
 
-	if #data == 3 then
-		local position = Vector3.new(data[1], data[2], data[3])
-		return CFrame.new(position)
-	end
-
 	return nil
 end
 
@@ -39,6 +34,8 @@ function PlacementService.CanPlace(partCFrame, partSize, ignoreList)
 	params.FilterDescendantsInstances = ignoreList or {}
 
 	local overlapping = workspace:GetPartBoundsInBox(partCFrame, partSize, params)
+
+	print("Hits:", #overlapping)
 
 	for _, part in ipairs(overlapping) do
 		if part.CanCollide then
@@ -64,21 +61,11 @@ function PlacementService.GetTemplate(templateName, templateFolder)
 	return nil
 end
 
-function PlacementService.BuildRecord(templateName, pivotCFrame, extra)
-	local record = {
+function PlacementService.BuildRecord(templateName, pivotCFrame)
+	return {
 		Template = templateName,
-		Pivot = serializeCFrame(pivotCFrame),
+		Pivot = { pivotCFrame:GetComponents() }
 	}
-
-	if typeof(extra) == "table" then
-		for k, v in pairs(extra) do
-			if record[k] == nil then
-				record[k] = v
-			end
-		end
-	end
-
-	return record
 end
 
 function PlacementService.SpawnPlacement(record, parentFolder, templateFolder)

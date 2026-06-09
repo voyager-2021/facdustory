@@ -2,30 +2,25 @@
   "name": "facdustory",
   "tree": {
     "$className": "DataModel",
-
+    "Chat": {},
+    "Lighting": {},
     "ReplicatedStorage": {
-      "$path": "src/Shared",
-
-      "Packages": {
-        "$path": "Packages"
-      }
+      "$path": "src/Shared"
     },
-
     "ServerScriptService": {
       "$path": "src/Server"
     },
-
+    "SoundService": {},
     "StarterPlayer": {
+      "$properties": {
+        "CameraMaxZoomDistance": 128,
+        "CharacterUseJumpPower": false
+      },
       "StarterPlayerScripts": {
         "$path": "src/Client"
       }
     },
-
-    "Workspace": {},
-
-    "Lighting": {},
-    "SoundService": {},
-    "Chat": {},
-    "TextChatService": {}
+    "TextChatService": {},
+    "Workspace": {}
   }
 }

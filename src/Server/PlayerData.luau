@@ -1,6 +1,8 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 
+local Logging = require(game:GetService("ServerScriptService"):WaitForChild("Logging"))
+
 local StatStore = DataStoreService:GetDataStore("PlayerStats")
 
 local PlayerData = {}
@@ -15,6 +17,8 @@ PlayerData.Schema = {
 }
 
 local function safeGet(store, key)
+	Logging.Debug("GetAsync:", {store, key})
+
 	local ok, result = pcall(function()
 		return store:GetAsync(key)
 	end)
@@ -28,6 +32,8 @@ local function safeGet(store, key)
 end
 
 local function safeSet(store, key, value)
+	Logging.Debug("SetAsync:", {store, key, value})
+
 	local ok, result = pcall(function()
 		store:SetAsync(key, value)
 	end)
@@ -65,12 +71,20 @@ function PlayerData.LoadPlayer(player)
 	end
 end
 
+local saving = {}
+
 function PlayerData.SavePlayer(player)
+	if saving[player] then
+		return
+	end
+
+	saving[player] = true
+
+	Logging.Debug("Saving player:", player)
+
 	for folderName, fields in pairs(PlayerData.Schema) do
 		local folder = player:FindFirstChild(folderName)
-		if not folder then
-			continue
-		end
+		if not folder then continue end
 
 		for _, field in pairs(fields) do
 			local value = folder:FindFirstChild(field.Name)
@@ -79,6 +93,8 @@ function PlayerData.SavePlayer(player)
 			end
 		end
 	end
+
+	saving[player] = nil
 end
 
 function PlayerData.SaveAll()
