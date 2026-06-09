@@ -304,7 +304,6 @@ function WorldSession.PlaceObject(player, placementData)
 	clone.Parent = worldFolder
 	clone:PivotTo(cf)
 
-
 	local record = PlacementService.BuildRecord(templateName, cf, placementData.Extra)
 	table.insert(session.State.PlacedObjects, record)
 	markDirty()
