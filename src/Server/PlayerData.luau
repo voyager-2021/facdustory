@@ -9,7 +9,8 @@ local PlayerData = {}
 
 PlayerData.Schema = {
 	leaderstats = {
-		test = { Type = "IntValue", BaseValue = 5, Name = "test" },
+		Cash = { Type = "IntValue", BaseValue = 0, Name = "Cash" },
+		ResearchPoint = { Type = "IntValue", BaseValue = 0, Name = "ResearchPoint" },
 	},
 	playerstats = {
 		test2 = { Type = "IntValue", BaseValue = 50, Name = "test2" },
@@ -65,8 +66,13 @@ function PlayerData.LoadPlayer(player)
 			value.Name = field.Name
 			value.Parent = folder
 
-			local stored = safeGet(StatStore, statKey(player.UserId, field.Name))
-			value.Value = (stored ~= nil) and stored or field.BaseValue
+			-- For Cash and ResearchPoint, always use BaseValue (0), ignore DataStore
+			if field.Name == "Cash" or field.Name == "ResearchPoint" then
+				value.Value = field.BaseValue
+			else
+				local stored = safeGet(StatStore, statKey(player.UserId, field.Name))
+				value.Value = (stored ~= nil) and stored or field.BaseValue
+			end
 		end
 	end
 end

@@ -12,10 +12,6 @@
     },
     "SoundService": {},
     "StarterPlayer": {
-      "$properties": {
-        "CameraMaxZoomDistance": 128,
-        "CharacterUseJumpPower": false
-      },
       "StarterPlayerScripts": {
         "$path": "src/Client"
       }
