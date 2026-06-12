@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Logging = require(game:GetService("ServerScriptService"):WaitForChild("Logging"))
+local Logging = require(ReplicatedStorage:WaitForChild("Logging"))
 
 local WorldData = require(game:GetService("ServerScriptService"):WaitForChild("WorldData"))
 local WorldRoutes = require(game:GetService("ServerScriptService"):WaitForChild("WorldRoutes"))
@@ -298,11 +298,7 @@ function WorldSession.PlaceObject(player, placementData)
 		return false, "Unknown template: " .. templateName
 	end
 
-	local cf = CFrame.new(
-		math.round(position.X),
-		math.round(position.Y),
-		math.round(position.Z)
-	)
+	local cf = CFrame.new(math.round(position.X), math.round(position.Y), math.round(position.Z))
 
 	local worldFolder = ensureWorldFolder()
 
@@ -312,11 +308,7 @@ function WorldSession.PlaceObject(player, placementData)
 		table.insert(ignoreList, player.Character)
 	end
 
-	local okPlace, hit = PlacementService.CanPlace(
-		cf,
-		template:GetExtentsSize(),
-		ignoreList
-	)
+	local okPlace, hit = PlacementService.CanPlace(cf, template:GetExtentsSize(), ignoreList)
 
 	if not okPlace then
 		Logging.Debug("Blocked by:", hit)

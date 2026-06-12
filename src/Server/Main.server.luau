@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Logging = require(game:GetService("ServerScriptService"):WaitForChild("Logging"))
+local Logging = require(ReplicatedStorage:WaitForChild("Logging"))
 local PlayerData = require(game:GetService("ServerScriptService"):WaitForChild("PlayerData"))
 local WorldSession = require(game:GetService("ServerScriptService"):WaitForChild("WorldSession"))
 local StatsSync = require(game:GetService("ServerScriptService"):WaitForChild("StatsSync"))
@@ -12,16 +12,26 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 local ClientPlacement = Events:WaitForChild("ClientPlacement")
 
 local function onPlayerAdded(player)
+	Logging.Debug("Loading player:", player)
+
 	PlayerData.LoadPlayer(player)
+
 	-- Force reset to 0 for testing
 	task.wait(0.1)
+
 	local leaderstats = player:FindFirstChild("leaderstats")
+
 	if leaderstats then
 		local cash = leaderstats:FindFirstChild("Cash")
 		local rp = leaderstats:FindFirstChild("ResearchPoint")
-		if cash then cash.Value = 0 end
-		if rp then rp.Value = 0 end
+		if cash then
+			cash.Value = 0
+		end
+		if rp then
+			rp.Value = 0
+		end
 	end
+
 	StatsSync.InitializeStatsListener(player)
 end
 
@@ -63,17 +73,17 @@ end
 startWorldSession()
 
 -- Start day/night cycle
-DayNightCycle.SetCycleDuration(180)  -- 3 minute cycle (change to 1200 for 20 min = IRL speed)
+DayNightCycle.SetCycleDuration(180) -- 3 minute cycle (change to 1200 for 20 min = IRL speed)
 DayNightCycle.Start()
 
 PlayerData.AutoSave(120)
 
 ClientPlacement.OnServerEvent:Connect(function(player, placementData)
 	print(placementData)
-	
+
 	local ok, result, record = WorldSession.PlaceObject(player, placementData)
 
-	Logging.Debug({ok, result, record})
+	Logging.Debug({ ok, result, record })
 	Logging.Debug(placementData)
 
 	if not ok then

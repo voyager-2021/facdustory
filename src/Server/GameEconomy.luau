@@ -47,7 +47,7 @@ function GameEconomy.SetResearchPoint(player, amount)
 	if leaderstats then
 		local rp = leaderstats:FindFirstChild("ResearchPoint")
 		if rp then
-			rip.Value = amount
+			rp.Value = amount
 		end
 	end
 end
@@ -65,8 +65,13 @@ end
 
 -- Batch operations
 function GameEconomy.Transaction(player, cashDelta, rpDelta)
-	if cashDelta then StatsSync.AddCash(player, cashDelta) end
-	if rpDelta then StatsSync.AddResearchPoint(player, rpDelta) end
+	if cashDelta then
+		StatsSync.AddCash(player, cashDelta)
+	end
+
+	if rpDelta then
+		StatsSync.AddResearchPoint(player, rpDelta)
+	end
 end
 
 return GameEconomy

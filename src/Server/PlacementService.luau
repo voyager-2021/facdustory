@@ -64,7 +64,7 @@ end
 function PlacementService.BuildRecord(templateName, pivotCFrame)
 	return {
 		Template = templateName,
-		Pivot = { pivotCFrame:GetComponents() }
+		Pivot = { pivotCFrame:GetComponents() },
 	}
 end
 

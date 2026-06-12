@@ -1,6 +1,6 @@
 local DataStoreService = game:GetService("DataStoreService")
 
-local Logging = require(game:GetService("ServerScriptService"):WaitForChild("Logging"))
+local Logging = require(game:GetService("ReplicatedStorage"):WaitForChild("Logging"))
 
 local WorldMetaStore = DataStoreService:GetDataStore("WorldMetadata")
 local WorldCodeStore = DataStoreService:GetDataStore("WorldCodeIndex")
